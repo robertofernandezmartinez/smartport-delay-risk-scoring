@@ -1,6 +1,8 @@
 # Data files (Too big for GitHub)
 02_Data/
 03_Working/
+04_Models/*.pkl
+04_Models/*.joblib
 05_Outputs/
 
 # Virtual Environments & System
