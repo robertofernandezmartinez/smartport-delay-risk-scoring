@@ -1,0 +1,13 @@
+# Data files (Too big for GitHub)
+02_Data/
+03_Working/
+05_Outputs/
+
+# Virtual Environments & System
+venv/
+.DS_Store
+.vscode/
+.ipynb_checkpoints/
+
+# Models (Keep skeletons, but ignore heavy trained pipes if necessary)
+# 04_Models/*.pkl
