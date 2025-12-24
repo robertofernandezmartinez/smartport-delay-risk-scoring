@@ -13,3 +13,8 @@ venv/
 
 # Models (Keep skeletons, but ignore heavy trained pipes if necessary)
 # 04_Models/*.pkl
+
+# Security
+.env
+*.json
+!smartport_workflow.json
