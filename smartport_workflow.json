@@ -1,0 +1,92 @@
+{
+  "name": "smartport_workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vessel-alert",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        -80
+      ],
+      "id": "762bd734-964d-450e-84a2-06521262faf8",
+      "name": "Webhook",
+      "webhookId": "818a8922-7e0d-4914-83aa-2d0977ce7cf4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Vessel ID: {{ $json.body.vessel_id }}\nRisk Score: {{ $json.body.risk_score }}\nAction: {{ $json.body.recommended_action }}\n\nWrite a short urgent notification in English for the harbor master.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        32,
+        -80
+      ],
+      "id": "fc88b7be-12be-44bd-822b-ee6eb0d1fa52",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        128
+      ],
+      "id": "1f7e4b23-736e-4791-81f2-906bfce21254",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eiUWoJDs7XNEc3XL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "52118a93-aa5e-4b41-b3a0-214b7481f4b9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c893c8b00d5ae1728ba007ddce6e235cc28dabb2fb61fa85a6455c9992e40498"
+  },
+  "id": "uq4bXqv2nGleWU67",
+  "tags": []
+}
