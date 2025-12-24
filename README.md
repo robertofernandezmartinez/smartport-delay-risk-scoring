@@ -1,4 +1,4 @@
-# SmartPort: Early Warning Risk System 🚢🤖
+# SmartPort AI: Early Warning Risk System 🚢🤖
 
 An end-to-end Artificial Intelligence ecosystem designed for operational risk management in port terminals. It integrates **Machine Learning** for delay prediction and an **AI Agent (LLM)** for automated critical alert communication.
 
