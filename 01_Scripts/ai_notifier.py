@@ -4,7 +4,7 @@ import datetime
 import hashlib
 
 # 1. Configuration with your EXACT Webhook URL
-WEBHOOK_URL = "https://robertofernandezmartinez.app.n8n.cloud/webhook-test/vessel-alert"
+WEBHOOK_URL = "https://robertofernandezmartinez.app.n8n.cloud/webhook/vessel-alert"
 
 def generate_prediction_id(vessel_id, timestamp):
     """Generates a unique ID for the Google Sheets row"""
