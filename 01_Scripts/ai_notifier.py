@@ -3,27 +3,30 @@ import requests
 import datetime
 import hashlib
 
-# 1. Configuración con tu URL exacta
+# 1. Configuration with your EXACT Webhook URL
 WEBHOOK_URL = "https://robertofernandezmartinez.app.n8n.cloud/webhook-test/vessel-alert"
 
 def generate_prediction_id(vessel_id, timestamp):
+    """Generates a unique ID for the Google Sheets row"""
     unique_str = f"{vessel_id}_{timestamp}"
     return hashlib.sha256(unique_str.encode()).hexdigest()[:12]
 
 def send_to_n8n():
+    """Processes predictions and triggers the n8n automation workflow"""
     try:
-        # Cargamos los datos
+        # Load predictions from the output folder
         df = pd.read_csv('05_Outputs/predictions.csv')
     except FileNotFoundError:
-        print("❌ Error: No se encuentra el archivo '05_Outputs/predictions.csv'")
+        print("❌ Error: '05_Outputs/predictions.csv' not found.")
         return
 
-    # Cogemos los 5 barcos con más riesgo
+    # Select the top 5 vessels with the highest risk scores
     top_vessels = df.sort_values(by='risk_score', ascending=False).head(5)
 
-    print(f"🚀 Enviando datos a n8n...")
+    print(f"🚀 Dispatching {len(top_vessels)} vessels to n8n...")
 
     for _, row in top_vessels.iterrows():
+        # Using a new timestamp every time to force a new unique ID
         now_iso = datetime.datetime.utcnow().isoformat() + "Z"
         vessel_id = int(row['vessel_id'])
         
@@ -37,15 +40,15 @@ def send_to_n8n():
             "status": "Pending Review"
         }
 
-        # Enviar al Webhook
+        # Send to Webhook
         try:
             response = requests.post(WEBHOOK_URL, json=payload, timeout=10)
             if response.status_code == 200:
-                print(f"✅ Barco {vessel_id} enviado con éxito")
+                print(f"✅ Success: Vessel {vessel_id} sent.")
             else:
-                print(f"⚠️ Error {response.status_code} en barco {vessel_id}")
+                print(f"⚠️ Warning: Status {response.status_code} for Vessel {vessel_id}")
         except Exception as e:
-            print(f"❌ Error de conexión: {e}")
+            print(f"❌ Connection error: {e}")
 
 if __name__ == "__main__":
     send_to_n8n()
