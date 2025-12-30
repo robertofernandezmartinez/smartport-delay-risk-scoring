@@ -9,8 +9,12 @@ API_KEY = "AIzaSyDmxYcafp5zoZ00CGLSatuT6JALfllSqQ4"
 
 genai.configure(api_key=API_KEY)
 
-# Use 'gemini-1.5-flash' for better compatibility and speed
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Try the standard model name first
+try:
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except:
+    # Fallback for some library versions
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 # Page Configuration
 st.set_page_config(page_title="SmartPort AI Assistant", page_icon="🚢")
