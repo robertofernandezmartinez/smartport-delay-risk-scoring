@@ -1,60 +1,65 @@
-import os
 import pandas as pd
+import datetime
+import hashlib
 import gspread
+import os
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURATION ---
-CSV_SOURCE = "05_Outputs/predictions.csv"
+CSV_SOURCE = '05_Outputs/predictions.csv'
 CREDENTIALS_FILE = "credentials.json"
-SPREADSHEET_ID = "1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0" # Asegúrate de que este ID sea correcto
+SPREADSHEET_ID = "1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0"
 
-def sync_ml_predictions():
+def generate_prediction_id(vessel_id, timestamp):
+    """Generates a unique ID for the Google Sheets row - EXACTLY as before"""
+    unique_str = f"{vessel_id}_{timestamp}"
+    return hashlib.sha256(unique_str.encode()).hexdigest()[:12]
+
+def sync_predictions_to_sheets():
+    # 1. Google Sheets Setup
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    
+    creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+
+    # 2. Load ML Predictions
     try:
-        creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
-        client = gspread.authorize(creds)
-        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    except Exception as e:
-        print(f"❌ Connection Error: {e}")
+        df = pd.read_csv(CSV_SOURCE)
+    except FileNotFoundError:
+        print(f"❌ Error: '{CSV_SOURCE}' not found.")
         return
 
-    if not os.path.exists(CSV_SOURCE):
-        print(f"❌ Error: {CSV_SOURCE} not found.")
-        return
+    # 3. Process Data (Top 100 instead of Top 5 to make it "richer")
+    # We sort by risk_score just like you did
+    top_vessels = df.sort_values(by='risk_score', ascending=False).head(100)
 
-    # Cargamos el CSV y limpiamos los nombres de las columnas automáticamente
-    df = pd.read_csv(CSV_SOURCE)
-    df.columns = df.columns.str.strip().str.lower() # Elimina espacios y pasa a minúsculas
-    
-    print(f"DEBUG: Processed columns: {df.columns.tolist()}")
+    print(f"🚀 Processing {len(top_vessels)} vessels for Google Sheets...")
 
-    # Obtenemos IDs existentes para no duplicar
-    existing_ids = [str(i) for i in sheet.col_values(1)]
-    
-    new_data_batch = []
-    
-    # Mapeo flexible para evitar el KeyError
-    for _, row in df.iterrows():
-        # Intentamos obtener el ID usando varios nombres posibles
-        p_id = str(row.get('prediction_id') or row.get('id') or row.iloc[0])
+    new_rows = []
+    for _, row in top_vessels.iterrows():
+        # EXACT logic from your original script
+        now_iso = datetime.datetime.utcnow().isoformat() + "Z"
+        vessel_id = int(row['vessel_id'])
         
-        if p_id not in existing_ids:
-            new_data_batch.append([
-                p_id,
-                row.get('timestamp_prediction', ''),
-                row.get('vessel_id', ''),
-                row.get('risk_score', ''),
-                row.get('risk_level', ''),
-                row.get('recommended_action', ''),
-                "NEW"
-            ])
+        # We recreate the payload you had for n8n
+        prediction_id = generate_prediction_id(vessel_id, now_iso)
+        
+        new_rows.append([
+            prediction_id,          # Column A: prediction_id
+            now_iso,                # Column B: timestamp_prediction
+            vessel_id,              # Column C: vessel_id
+            round(float(row['risk_score']), 2), # Column D: risk_score
+            row['risk_level'],      # Column E: risk_level
+            row['recommended_action'], # Column F: recommended_action
+            "Pending Review"        # Column G: status
+        ])
 
-    if new_data_batch:
-        sheet.append_rows(new_data_batch)
-        print(f"🚀 Success: {len(new_data_batch)} rows synced.")
+    # 4. Bulk Upload
+    if new_rows:
+        sheet.append_rows(new_rows)
+        print(f"✅ Success: {len(new_rows)} vessels uploaded with original logic.")
     else:
-        print("ℹ️ No new data to upload.")
+        print("ℹ️ No data to sync.")
 
 if __name__ == "__main__":
-    sync_ml_predictions()
+    sync_predictions_to_sheets()
