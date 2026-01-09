@@ -1,37 +1,59 @@
-# SmartPort AI: Early Warning Risk System 🚢🤖
+# 🚢 SmartPort AI: Real-Time Maritime Risk Monitoring
 
-An end-to-end Artificial Intelligence ecosystem designed for operational risk management in port terminals. It integrates **Machine Learning** for delay prediction, an **AI Agent (LLM)** for automated communication, and **Real-time Audit Logging**.
+SmartPort AI is a professional-grade autonomous system designed to monitor vessel risks and manage port operations via AI. It integrates Google Sheets as a live database, OpenAI for decision-making, and Telegram for real-time alerting and interaction.
 
-## 🚀 Project Overview
-This project bridges the gap between static predictive models and real-world automation. The system filters thousands of vessel records, identifies those with a risk score higher than 80%, and triggers an AI Agent to generate professional instructions while maintaining a live audit trail of all actions.
+
+
+## 🚀 Core Features
+
+* **Dual-Engine Architecture**: 
+    * **The Watchman (Background Monitoring)**: Automatically scans maritime logs every 60 seconds. If a vessel exceeds a 0.8 risk threshold, it triggers an immediate Telegram alert.
+    * **The Analyst (AI Assistant)**: A conversational interface powered by GPT-4o-mini that answers complex queries about port status, delays, and vessel prioritization.
+* **Anti-Spam Logic**: Integrated memory management to ensure critical alerts are only sent once per risk event.
+* **Robust Data Handling**: Intelligent processing of inconsistent datasets, including empty fields and data grouping by Vessel ID.
+* **Cloud Native**: Fully deployed on Railway for 24/7 autonomous operation.
 
 ## 🛠️ Tech Stack
-- **Language:** Python 3.10 (Conda Environment)
-- **Data Stack:** Pandas, Scikit-Learn, XGBoost
-- **Orchestration:** n8n (Webhooks & Workflows)
-- **Generative AI:** Google Gemini API
-- **Storage & Auditing:** **Google Sheets (Logs Table)**
-- **Infrastructure:** REST API (Webhooks)
 
-## 📋 System Architecture
-1. **Risk Filtering:** A Python script processes model predictions and detects critical vessels (Risk > 0.8).
-2. **Triggering:** Data is sent via a POST request to a cloud-based n8n Webhook.
-3. **AI Processing:** The AI Agent ingests the `vessel_id`, `risk_score`, and `recommended_action` to craft a professional response.
-4. **Cloud Logging:** **The workflow automatically records the execution details, including the generated response, into a Google Sheets centralized dashboard.**
-5. **Automated Output:** Generation of an executive notification tailored for port operations.
+* **Language**: Python 3.x (Asynchronous)
+* **AI Engine**: OpenAI API (GPT-4o-mini)
+* **Database**: Google Sheets API (Real-time CRUD)
+* **Communication**: Telegram Bot API
+* **Infrastructure**: Railway (PaaS)
+* **Security**: Environment Variable Encryption (.env)
 
-## 📊 Real-World Results & Auditing
-The system provides a clear history of all high-risk interventions. Every notification is mirrored in the **Google Sheets Log**, allowing for performance reviews and operational transparency.
+## 📊 System Architecture
 
-> **SAMPLE LOG ENTRY:**
-> | Timestamp | Vessel ID | Risk Score | AI Instructions | Status |
-> | :--- | :--- | :--- | :--- | :--- |
-> | 2023-10-27 10:15 | V-102 | 0.94 | Reassign docking slot for Vessel V-102... | Success |
+The system follows a reactive pattern:
+1.  **Data Ingestion**: Fetches live vessel logs from Google Sheets.
+2.  **Processing**: 
+    * The `JobQueue` monitors risk thresholds asynchronously.
+    * The `ChatHandler` processes natural language queries using RAG-lite (Resource Augmented Generation).
+3.  **Delivery**: Sends structured Markdown alerts and professional reports via Telegram.
 
-## ⚙️ Installation & Usage
-1. Clone this repository.
-2. Activate the environment: `conda activate smartport`.
-3. Install dependencies: `pip install -r requirements.txt`.
-4. **Google Sheets Setup:** Ensure your n8n Google Sheets node is connected to the project spreadsheet.
-5. Import the `smartport_workflow.json` file into your n8n instance.
-6. Run the notifier: `python 01_Scripts/ai_notifier.py`.
+## ⚙️ Setup & Deployment
+
+1.  **Environment Variables**:
+    Create a `.env` file with the following:
+    ```env
+    TELEGRAM_TOKEN=your_bot_token
+    OPENAI_API_KEY=your_openai_key
+    SPREADSHEET_ID=your_google_sheet_id
+    TELEGRAM_CHAT_ID=your_personal_chat_id
+    ```
+2.  **Installation**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Execution**:
+    ```bash
+    python main.py
+    ```
+
+## 📈 Future Roadmap
+* Implementation of persistent SQLite history for conversation context.
+* Automated PDF report generation for port authorities.
+* Integration with live AIS (Automatic Identification System) data APIs.
+
+---
+Developed by Roberto Fernández - 2025. Specialized in AI Operations and Maritime Logistics.
