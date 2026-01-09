@@ -74,32 +74,32 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
         print(f"Global Monitoring Error: {error}")
 
 # 3. AI Assistant Logic (Chat Interaction)
+# --- UPDATED AI ASSISTANT LOGIC (v9.6) ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         data = get_data()
         
-        # System instructions to ensure professional English responses
+        system_instruction = (
+            "You are a Port Operations Expert. "
+            "IMPORTANT: If 'delay_minutes' is empty, use the 'risk_score' to estimate potential delays. "
+            "A high risk_score (above 0.8 or 80) implies a critical delay. "
+            "When asked for a Top 10, group by Vessel ID to avoid showing the same ship multiple times. "
+            "Respond concisely in English."
+        )
+        
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {
-                    "role": "system", 
-                    "content": "You are a Port Operations AI Analyst. Use the provided dataset to answer briefly and technically in English. If data is missing, suggest checking official maritime logs."
-                },
-                {
-                    "role": "user", 
-                    "content": f"Vessel Data: {data}\n\nUser Question: {update.message.text}"
-                }
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": f"Dataset: {data}\nQuestion: {update.message.text}"}
             ]
         )
         
-        response_text = completion.choices[0].message.content
-        await update.message.reply_text(response_text)
+        await update.message.reply_text(completion.choices[0].message.content)
         
     except Exception as e:
-        await update.message.reply_text(f"Sorry, I encountered an error processing your request.")
         print(f"Chat Error: {e}")
-
+        
 # 4. Main Execution Engine
 if __name__ == '__main__':
     print("🚢 SmartPort v9.5 - English Professional Engine Starting...")
