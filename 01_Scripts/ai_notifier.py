@@ -3,20 +3,21 @@ import datetime
 import hashlib
 import gspread
 import os
-import numpy as np # Added for realistic delay calculation
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURATION ---
-CSV_SOURCE = '05_Outputs/predictions.csv'
+PREDICTIONS_CSV = '05_Outputs/predictions.csv'
 CREDENTIALS_FILE = "credentials.json"
+# Your verified Spreadsheet ID
 SPREADSHEET_ID = "1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0"
 
 def generate_prediction_id(vessel_id, timestamp):
+    """Unique hash for audit log integrity."""
     unique_str = f"{vessel_id}_{timestamp}"
     return hashlib.sha256(unique_str.encode()).hexdigest()[:12]
 
 def sync_predictions_to_cloud():
-    # 1. Auth
+    # 1. Google Cloud Connection
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     try:
         creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
@@ -27,58 +28,48 @@ def sync_predictions_to_cloud():
         print(f"❌ Auth Error: {e}")
         return
 
-    # 2. Load Data
-    if not os.path.exists(CSV_SOURCE):
-        print(f"❌ Error: {CSV_SOURCE} not found.")
+    # 2. Load ML Predictions
+    if not os.path.exists(PREDICTIONS_CSV):
+        print(f"❌ Error: {PREDICTIONS_CSV} not found.")
         return
 
-    df = pd.read_csv(CSV_SOURCE)
+    df_pred = pd.read_csv(PREDICTIONS_CSV)
     
-    # 3. MECHANICAL CHANGE: Increase visibility
-    # We take the top 500 highest risks to show a significant but safe batch
-    top_vessels = df.sort_values(by='risk_score', ascending=False).head(500)
-    
-    existing_ids = sheet.col_values(1)
+    # Selecting the most relevant records (Top 1000 for a deep log)
+    # This reflects a real operational shift
+    existing_ids = set(sheet.col_values(1))
     prepared_rows = []
 
-    for _, row in top_vessels.iterrows():
+    # Sort by risk_score to prioritize visibility of critical alerts
+    df_sorted = df_pred.sort_values(by='risk_score', ascending=False).head(1000)
+
+    for _, row in df_sorted.iterrows():
         exec_time = row['execution_time']
         v_id = int(row['vessel_id'])
-        r_score = float(row['risk_score'])
-        
-        # 4. REALISTIC DELAY CALCULATION:
-        # We use the score as a base (0.0 to 1.0) and multiply by a max delay (e.g. 300 min)
-        # We add a small random variation so not all 1.0 scores look the same
-        base_delay = r_score * 240 # Max 4 hours
-        variation = np.random.randint(-15, 15) if r_score > 0 else 0
-        delay_min = max(0, int(base_delay + variation))
-        
         p_id = generate_prediction_id(v_id, exec_time)
         
         if p_id not in existing_ids:
             prepared_rows.append([
-                p_id,
-                exec_time,
-                v_id,
-                round(r_score, 4),
-                row['risk_level'],
-                delay_min,
-                row['recommended_action'],
-                "Pending Review"
+                p_id,                          # A: prediction_id
+                exec_time,                     # B: timestamp_prediction
+                v_id,                          # C: vessel_id
+                round(row['risk_score'], 4),    # D: risk_score
+                row['risk_level'],             # E: risk_level
+                row['recommended_action'],     # F: recommended_action
+                "Pending Review"               # G: status
             ])
 
-    # 5. Bulk Upload in chunks to avoid API Timeout
+    # 3. Final Deployment in Chunks
     if prepared_rows:
         try:
-            # We upload in smaller chunks of 100 to be 100% safe with Google Quotas
+            print(f"🚀 Syncing {len(prepared_rows)} records...")
             for i in range(0, len(prepared_rows), 100):
-                chunk = prepared_rows[i:i + 100]
-                sheet.append_rows(chunk)
-            print(f"🚀 Success: {len(prepared_rows)} unique records synced.")
+                sheet.append_rows(prepared_rows[i:i + 100])
+            print("✅ Deployment complete.")
         except Exception as e:
             print(f"❌ Sync Failed: {e}")
     else:
-        print("ℹ️ Status: No new unique records to add.")
+        print("ℹ️ Everything up to date.")
 
 if __name__ == "__main__":
     sync_predictions_to_cloud()
