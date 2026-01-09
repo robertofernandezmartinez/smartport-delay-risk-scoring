@@ -1,73 +1,122 @@
-import os, gspread, asyncio
+import os
+import gspread
+import asyncio
 from openai import OpenAI
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Load environment variables
+# 1. Configuration and Environment Setup
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Global set to track alerted vessels and avoid spam
+# Global set to track notified vessels and prevent notification loops (spam)
 sent_alerts = set()
 
 def get_data():
+    """Authenticates with Google Sheets and retrieves all records."""
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
     gc = gspread.authorize(creds)
+    # Uses the ID from environment variables for security and portability
     return gc.open_by_key(os.getenv("SPREADSHEET_ID")).sheet1.get_all_records()
 
-# --- SMART MONITORING LOGIC (Anti-Spam) ---
+# 2. Automated Risk Monitoring Logic (Replaces n8n)
 async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
     global sent_alerts
     try:
         data = get_data()
         chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        
+        if not chat_id:
+            print("Monitoring Error: TELEGRAM_CHAT_ID is missing in environment variables.")
+            return
+
         current_high_risks = set()
 
         for vessel in data:
-            v_id = str(vessel.get('vessel_id'))
-            risk = float(vessel.get('risk_score', 0))
-            
+            v_id = str(vessel.get('vessel_id', 'Unknown'))
+            raw_risk = vessel.get('risk_score', '')
+
+            # Robustness: Skip empty cells or rows without risk data
+            if not str(raw_risk).strip():
+                continue
+
+            try:
+                risk = float(raw_risk)
+            except ValueError:
+                # Logs error but keeps the bot running
+                print(f"Skipping row for {v_id}: Cannot convert '{raw_risk}' to number.")
+                continue
+
+            # Alert logic: Trigger if risk > 0.8 and not already notified
             if risk > 0.8:
                 current_high_risks.add(v_id)
-                # Only send message if it's a NEW risk alert
                 if v_id not in sent_alerts:
-                    message = (
+                    alert_message = (
                         f"🚨 *CRITICAL RISK ALERT*\n\n"
-                        f"Vessel ID: {v_id}\n"
-                        f"Risk Score: {risk}\n"
-                        f"Action: Please check the Operations Dashboard."
+                        f"🚢 *Vessel:* {v_id}\n"
+                        f"📉 *Risk Score:* {risk}\n"
+                        f"⚠️ *Status:* Immediate attention required."
                     )
-                    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+                    await context.bot.send_message(
+                        chat_id=chat_id, 
+                        text=alert_message, 
+                        parse_mode='Markdown'
+                    )
                     sent_alerts.add(v_id)
 
-        # Remove vessels from sent_alerts if their risk is no longer > 0.8
+        # Cleanup: Remove vessels from memory if their risk is resolved (drops below 0.8)
         sent_alerts = sent_alerts.intersection(current_high_risks)
 
     except Exception as error:
-        print(f"Monitoring Error: {error}")
+        print(f"Global Monitoring Error: {error}")
 
-# --- AI ASSISTANT LOGIC ---
+# 3. AI Assistant Logic (Chat Interaction)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data = get_data()
-    completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a Port Operations AI. Use the provided data to answer in English. Be technical and concise."},
-            {"role": "user", "content": f"Dataset: {data}\nUser Query: {update.message.text}"}
-        ]
-    )
-    await update.message.reply_text(completion.choices[0].message.content)
+    try:
+        data = get_data()
+        
+        # System instructions to ensure professional English responses
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are a Port Operations AI Analyst. Use the provided dataset to answer briefly and technically in English. If data is missing, suggest checking official maritime logs."
+                },
+                {
+                    "role": "user", 
+                    "content": f"Vessel Data: {data}\n\nUser Question: {update.message.text}"
+                }
+            ]
+        )
+        
+        response_text = completion.choices[0].message.content
+        await update.message.reply_text(response_text)
+        
+    except Exception as e:
+        await update.message.reply_text(f"Sorry, I encountered an error processing your request.")
+        print(f"Chat Error: {e}")
 
+# 4. Main Execution Engine
 if __name__ == '__main__':
-    print("🚢 SmartPort v9.4 - English Code / Spanish Support")
-    app = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
+    print("🚢 SmartPort v9.5 - English Professional Engine Starting...")
     
-    # Run risk check every 60 seconds
+    # Initialize the Telegram Application
+    token = os.getenv("TELEGRAM_TOKEN")
+    app = ApplicationBuilder().token(token).build()
+    
+    # Schedule the background task (Job Queue)
+    # interval=60: Checks the Google Sheet every minute
     if app.job_queue:
         app.job_queue.run_repeating(check_vessel_risk, interval=60, first=10)
+    else:
+        print("Warning: JobQueue not initialized. Check if 'python-telegram-bot[job-queue]' is installed.")
     
+    # Add handler for incoming chat messages
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    
+    # Start the bot
     app.run_polling(drop_pending_updates=True)
