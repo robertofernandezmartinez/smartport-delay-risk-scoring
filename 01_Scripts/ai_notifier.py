@@ -1,54 +1,60 @@
+import os
 import pandas as pd
-import requests
-import datetime
-import hashlib
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-# 1. Configuration with your EXACT Webhook URL
-WEBHOOK_URL = "https://robertofernandezmartinez.app.n8n.cloud/webhook/vessel-alert"
+# --- CONFIGURATION ---
+CSV_SOURCE = "05_Outputs/predictions.csv"
+CREDENTIALS_FILE = "credentials.json"
+SPREADSHEET_ID = "1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0" # Asegúrate de que este ID sea correcto
 
-def generate_prediction_id(vessel_id, timestamp):
-    """Generates a unique ID for the Google Sheets row"""
-    unique_str = f"{vessel_id}_{timestamp}"
-    return hashlib.sha256(unique_str.encode()).hexdigest()[:12]
-
-def send_to_n8n():
-    """Processes predictions and triggers the n8n automation workflow"""
+def sync_ml_predictions():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    
     try:
-        # Load predictions from the output folder
-        df = pd.read_csv('05_Outputs/predictions.csv')
-    except FileNotFoundError:
-        print("❌ Error: '05_Outputs/predictions.csv' not found.")
+        creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    except Exception as e:
+        print(f"❌ Connection Error: {e}")
         return
 
-    # Select the top 5 vessels with the highest risk scores
-    top_vessels = df.sort_values(by='risk_score', ascending=False).head(5)
+    if not os.path.exists(CSV_SOURCE):
+        print(f"❌ Error: {CSV_SOURCE} not found.")
+        return
 
-    print(f"🚀 Dispatching {len(top_vessels)} vessels to n8n...")
+    # Cargamos el CSV y limpiamos los nombres de las columnas automáticamente
+    df = pd.read_csv(CSV_SOURCE)
+    df.columns = df.columns.str.strip().str.lower() # Elimina espacios y pasa a minúsculas
+    
+    print(f"DEBUG: Processed columns: {df.columns.tolist()}")
 
-    for _, row in top_vessels.iterrows():
-        # Using a new timestamp every time to force a new unique ID
-        now_iso = datetime.datetime.utcnow().isoformat() + "Z"
-        vessel_id = int(row['vessel_id'])
+    # Obtenemos IDs existentes para no duplicar
+    existing_ids = [str(i) for i in sheet.col_values(1)]
+    
+    new_data_batch = []
+    
+    # Mapeo flexible para evitar el KeyError
+    for _, row in df.iterrows():
+        # Intentamos obtener el ID usando varios nombres posibles
+        p_id = str(row.get('prediction_id') or row.get('id') or row.iloc[0])
         
-        payload = {
-            "prediction_id": generate_prediction_id(vessel_id, now_iso),
-            "timestamp_prediction": now_iso,
-            "vessel_id": vessel_id,
-            "risk_score": round(float(row['risk_score']), 2),
-            "risk_level": row['risk_level'],
-            "recommended_action": row['recommended_action'],
-            "status": "Pending Review"
-        }
+        if p_id not in existing_ids:
+            new_data_batch.append([
+                p_id,
+                row.get('timestamp_prediction', ''),
+                row.get('vessel_id', ''),
+                row.get('risk_score', ''),
+                row.get('risk_level', ''),
+                row.get('recommended_action', ''),
+                "NEW"
+            ])
 
-        # Send to Webhook
-        try:
-            response = requests.post(WEBHOOK_URL, json=payload, timeout=10)
-            if response.status_code == 200:
-                print(f"✅ Success: Vessel {vessel_id} sent.")
-            else:
-                print(f"⚠️ Warning: Status {response.status_code} for Vessel {vessel_id}")
-        except Exception as e:
-            print(f"❌ Connection error: {e}")
+    if new_data_batch:
+        sheet.append_rows(new_data_batch)
+        print(f"🚀 Success: {len(new_data_batch)} rows synced.")
+    else:
+        print("ℹ️ No new data to upload.")
 
 if __name__ == "__main__":
-    send_to_n8n()
+    sync_ml_predictions()
