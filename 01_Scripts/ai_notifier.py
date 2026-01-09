@@ -9,7 +9,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 CSV_SOURCE = '05_Outputs/predictions.csv'
 CREDENTIALS_FILE = "credentials.json"
 # Replace with your actual Google Sheet ID
-SPREADSHEET_ID = "YOUR_SPREADSHEET_ID"
+SPREADSHEET_ID = "1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0"
 
 def generate_prediction_id(vessel_id, timestamp):
     """
