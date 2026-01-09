@@ -10,8 +10,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -176,
-        -80
+        -640,
+        -48
       ],
       "id": "762bd734-964d-450e-84a2-06521262faf8",
       "name": "Webhook",
@@ -26,8 +26,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        32,
-        -80
+        -464,
+        32
       ],
       "id": "fc88b7be-12be-44bd-822b-ee6eb0d1fa52",
       "name": "AI Agent"
@@ -39,8 +39,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -96,
-        128
+        -464,
+        208
       ],
       "id": "1f7e4b23-736e-4791-81f2-906bfce21254",
       "name": "Google Gemini Chat Model",
@@ -50,6 +50,211 @@
           "name": "Google Gemini(PaLM) Api account"
         }
       }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0",
+          "mode": "list",
+          "cachedResultName": "SmartPort_AI_Operational_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aTJLlg4YNT77v1PLQccKl8ZCADBJN0U8kncTBvf43P0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Hoja 1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prediction_id": "={{$json.prediction_id}}",
+            "timestamp_prediction": "={{$json.timestamp_prediction}}",
+            "vessel_id": "={{$json.vessel_id}}",
+            "delay_minutes": "={{$json.delay_minutes}}",
+            "risk_score": "={{$json.risk_score}}",
+            "risk_level": "={{$json.risk_level}}",
+            "status": "={{$json.status}}",
+            "recommended_action": "={{$json.recommended_action}}"
+          },
+          "matchingColumns": [
+            "vessel_id"
+          ],
+          "schema": [
+            {
+              "id": "prediction_id",
+              "displayName": "prediction_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp_prediction",
+              "displayName": "timestamp_prediction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "vessel_id",
+              "displayName": "vessel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "delay_minutes",
+              "displayName": "delay_minutes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "risk_score",
+              "displayName": "risk_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "risk_level",
+              "displayName": "risk_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recommended_action",
+              "displayName": "recommended_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -304,
+        -176
+      ],
+      "id": "c2ba7715-d9f1-434b-8081-9e7682edc25d",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "TaMPSJMLdmCIojld",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0ad2fea2-afdb-4fba-b497-9209958699a3",
+              "name": "prediction_id",
+              "value": "={{$execution.id}}",
+              "type": "string"
+            },
+            {
+              "id": "a2757815-e780-4322-88cc-276b5a03daef",
+              "name": "timestamp_prediction",
+              "value": "={{$now}}",
+              "type": "string"
+            },
+            {
+              "id": "b34895b7-db16-4008-9c06-2cceeccece36",
+              "name": "status",
+              "value": "NEW",
+              "type": "string"
+            },
+            {
+              "id": "49ea86ae-7639-4d4d-832f-6bc549eea635",
+              "name": "recommended_action",
+              "value": "={{   $json.risk_level === \"CRITICAL\"     ? \"Alert port authority immediately\"     : $json.risk_level === \"HIGH\"     ? \"Prepare mitigation plan\"     : $json.risk_level === \"MEDIUM\"     ? \"Notify operations team\"     : \"Monitor vessel\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a68c990c-923c-402c-8bc6-fdffccfb154c",
+              "name": "delay_minutes",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "4cb02637-3413-4ada-8cc6-a144d559a709",
+              "name": "vessel_id",
+              "value": "={{$json.body.vessel_id}}",
+              "type": "string"
+            },
+            {
+              "id": "892804fc-0bbe-4f2a-b41d-2ee3ee6d99e7",
+              "name": "risk_score",
+              "value": "={{$json.body.risk_score}}\n",
+              "type": "string"
+            },
+            {
+              "id": "c8b91901-af35-400f-ab03-e9d258e2cd16",
+              "name": "risk_level",
+              "value": "={{$json.body.risk_level}}\n",
+              "type": "string"
+            },
+            {
+              "id": "dff5eeac-029d-4bc7-9a18-390d1a904a50",
+              "name": "recommended_action",
+              "value": "={{   $json.body.risk_level === \"CRITICAL\"     ? \"Alert port authority immediately\"     : $json.body.risk_level === \"HIGH\"     ? \"Prepare mitigation plan\"     : $json.body.risk_level === \"MEDIUM\"     ? \"Notify operations team\"     : \"Monitor vessel\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        -176
+      ],
+      "id": "2c337372-db48-4d13-a50e-c5c3e42930d2",
+      "name": "Edit Fields"
     }
   ],
   "pinData": {},
@@ -59,6 +264,11 @@
         [
           {
             "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
@@ -75,14 +285,25 @@
           }
         ]
       ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "52118a93-aa5e-4b41-b3a0-214b7481f4b9",
+  "versionId": "3b5386c6-93a1-4e44-bb1a-dd9b2ee31a82",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "c893c8b00d5ae1728ba007ddce6e235cc28dabb2fb61fa85a6455c9992e40498"
