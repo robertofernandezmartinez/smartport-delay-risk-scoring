@@ -111,9 +111,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": f"Dataset: {data}\nQuery: {user_query}"}
             ]
         )
-        
-        # Send the professional response back to the user
-        await update.message.reply_text(completion.choices[0].message.content)
+
+        # Use 'Markdown' (v1) which is more compatible with standard AI output
+        await update.message.reply_text(completion.choices[0].message.content, parse_mode='Markdown')
 
     except Exception as e:
         # In case of API errors or connectivity issues
