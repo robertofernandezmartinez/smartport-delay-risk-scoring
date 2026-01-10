@@ -76,7 +76,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         system_instruction = (
             "You are a Port Operations Analyst. Examine the dataset and provide insights. "
-            "Respond in the same language as the user (English/Spanish). Professional tone."
+            "CRITICAL: Detect the language of the user's message and respond ALWAYS in that same language. "
+            "If the user asks in Spanish, respond in Spanish. If English, respond in English. "
+            "Maintain a professional and technical maritime tone."
         )
         
         completion = ai_client.chat.completions.create(
