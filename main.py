@@ -85,29 +85,40 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
             print("⏳ Google Sheets API timeout - Skipping this cycle...")
         else:
             print(f"Monitor Error: {e}")
+
 # --- ASSISTANT (The Analyst) ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         data = get_data()
         
+        # We update the instruction to be bilingual while keeping the original business logic
         system_instruction = (
             "You are a Port Operations Analyst. "
             "Examine the dataset and list vessels by priority based on 'risk_score'. "
             "If the user asks for more vessels than available in the data, list all you have and "
             "mention that those are the only unique vessels currently tracked in the system. "
-            "Always respond in professional English."
+            "Identify the language used by the user (English or Spanish) and respond "
+            "in that same language. Always maintain a professional and technical tone."
         )
         
+        # User's query from Telegram
+        user_query = update.message.text
+
         completion = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_instruction},
-                {"role": "user", "content": f"Dataset: {data}\nQuery: {update.message.text}"}
+                {"role": "user", "content": f"Dataset: {data}\nQuery: {user_query}"}
             ]
         )
+        
+        # Send the professional response back to the user
         await update.message.reply_text(completion.choices[0].message.content)
+
     except Exception as e:
+        # In case of API errors or connectivity issues
         print(f"Chat Error: {e}")
+        await update.message.reply_text("I am experiencing technical difficulties. Please try again in a moment.")
 
 if __name__ == '__main__':
     print("🚢 SmartPort v9.7 - Final Cloud-Ready Polish")
