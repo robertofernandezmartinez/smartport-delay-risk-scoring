@@ -33,38 +33,58 @@ def get_data():
     # 2. Use the Spreadsheet ID from environment variables
     return gc.open_by_key(os.getenv("SPREADSHEET_ID")).sheet1.get_all_records()
 
-# --- MONITORING (The Watchman) ---
+# --- MONITORING (The Watchman - Optimized UX) ---
 async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
+    """
+    Monitors high-risk vessels and sends a single consolidated alert 
+    to avoid 'notification fatigue' and improve user experience.
+    """
     global sent_alerts
     try:
         data = get_data()
         chat_id = os.getenv("TELEGRAM_CHAT_ID")
         current_high_risks = set()
+        new_critical_ids = []
 
         for vessel in data:
             v_id = str(vessel.get('vessel_id', '')).strip()
             if not v_id: continue
             
             try:
-                # Based on our XGBoost threshold
                 risk = float(vessel.get('risk_score', 0))
             except: continue
 
             if risk > 0.8:
                 current_high_risks.add(v_id)
                 if v_id not in sent_alerts:
-                    message = f"🚨 *CRITICAL ALERT*: Vessel {v_id} shows high risk ({risk})."
-                    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+                    new_critical_ids.append(v_id)
                     sent_alerts.add(v_id)
         
+        # --- CONSOLIDATED NOTIFICATION LOGIC ---
+        if new_critical_ids:
+            num_vessels = len(new_critical_ids)
+            
+            if num_vessels > 3:
+                # If many vessels are at risk, send a summary
+                message = (
+                    f"🚨 *CRITICAL ALERT*: {num_vessels} new vessels with high risk detected!\n"
+                    f"Check the dashboard or ask me: 'Which vessels are at risk?'"
+                )
+            else:
+                # If only 1-3 vessels, list them specifically
+                vessels_list = ", ".join([f"`{v}`" for v in new_critical_ids])
+                message = f"🚨 *CRITICAL ALERT*: High risk detected in vessel(s): {vessels_list}."
+
+            await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+        
+        # Cleanup state: Only keep alerts for vessels that are still high risk
         sent_alerts = sent_alerts.intersection(current_high_risks)
+
     except Exception as e:
-        # Professional error handling for Cloud APIs
-        if "Timed out" in str(e) or "timeout" in str(e).lower():
-            print("⏳ Network Timeout: Google Sheets API is busy. Retrying in next cycle...")
+        if "timeout" in str(e).lower():
+            print("⏳ Google Sheets API timeout - Skipping this cycle...")
         else:
             print(f"Monitor Error: {e}")
-
 # --- ASSISTANT (The Analyst) ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
