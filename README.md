@@ -10,6 +10,9 @@ The core objective is to identify vessels that will exceed the **120-minute (2-h
 * **Architecture:** A seamless pipeline from local ML execution to Google Cloud storage and a **Cloud-Native Telegram Bot (Railway)** with OpenAI integration.
 
 ## 🏗️ Technical Architecture
+
+![SmartPort AI Architecture](architecture_diagram.png)
+
 The system is built as a unified ecosystem where data flows through three distinct layers:
 
 1.  **ML Engine:** XGBoost model trained on engineered AIS features (speed delta, movement stability, heading changes).
