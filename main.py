@@ -59,7 +59,11 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
         
         sent_alerts = sent_alerts.intersection(current_high_risks)
     except Exception as e:
-        print(f"Monitor Error: {e}")
+        # Professional error handling for Cloud APIs
+        if "Timed out" in str(e) or "timeout" in str(e).lower():
+            print("⏳ Network Timeout: Google Sheets API is busy. Retrying in next cycle...")
+        else:
+            print(f"Monitor Error: {e}")
 
 # --- ASSISTANT (The Analyst) ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
