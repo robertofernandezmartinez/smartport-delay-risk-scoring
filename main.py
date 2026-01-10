@@ -1,4 +1,5 @@
 import os
+import json
 import gspread
 import asyncio
 from openai import OpenAI
@@ -7,15 +8,29 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from oauth2client.service_account import ServiceAccountCredentials
 
+# 1. Load environment variables
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# 2. Global state for alerts
 sent_alerts = set()
 
 def get_data():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    
+    # 1. Look for credentials in Railway Environment Variable
+    google_json_str = os.getenv("GOOGLE_CREDENTIALS")
+    
+    if google_json_str:
+        # If in Railway, parse the JSON string
+        creds_dict = json.loads(google_json_str)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    else:
+        # If in Local, use the physical file
+        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+        
     gc = gspread.authorize(creds)
+    # 2. Use the Spreadsheet ID from environment variables
     return gc.open_by_key(os.getenv("SPREADSHEET_ID")).sheet1.get_all_records()
 
 # --- MONITORING (The Watchman) ---
@@ -31,6 +46,7 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
             if not v_id: continue
             
             try:
+                # Based on our XGBoost threshold
                 risk = float(vessel.get('risk_score', 0))
             except: continue
 
@@ -50,7 +66,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         data = get_data()
         
-        # We tell the AI to be helpful even if data is scarce
         system_instruction = (
             "You are a Port Operations Analyst. "
             "Examine the dataset and list vessels by priority based on 'risk_score'. "
@@ -71,10 +86,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Chat Error: {e}")
 
 if __name__ == '__main__':
-    print("🚢 SmartPort v9.7 - Final Polish")
-    app = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
+    print("🚢 SmartPort v9.7 - Final Cloud-Ready Polish")
+    
+    # Railway expects these to be set in the Variables tab
+    token = os.getenv("TELEGRAM_TOKEN")
+    
+    app = ApplicationBuilder().token(token).build()
     
     if app.job_queue:
+        # Check every 60 seconds
         app.job_queue.run_repeating(check_vessel_risk, interval=60, first=10)
     
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))

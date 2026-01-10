@@ -1,5 +1,6 @@
 python-telegram-bot[job-queue]
-openai
 gspread
 oauth2client
+openai
+pandas
 python-dotenv
