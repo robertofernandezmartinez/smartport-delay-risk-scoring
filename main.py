@@ -106,21 +106,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Technical error. Please check the system logs.")
 
 if __name__ == '__main__':
-    print("🚢 SmartPort v10.0 - Diagnostic Build Starting...")
+    print("🚢 SmartPort AI - Initializing Cloud Environment...")
     
-    # Try to fetch the token from any variation detected
-    raw_token = os.getenv("TELEGRAM_TOKEN") or os.getenv("TELEGRAM_TOKEN}")
+    # Check for the token
+    raw_token = os.getenv("TELEGRAM_TOKEN")
     
     if not raw_token:
-        print("❌ CRITICAL: TELEGRAM_TOKEN NOT DETECTED IN ENVIRONMENT")
+        print("❌ CRITICAL: TELEGRAM_TOKEN not found in environment variables.")
+        # This will list the keys actually seen by the bot
+        print(f"DEBUG: Visible variables: {list(os.environ.keys())}")
     else:
-        print("✅ TOKEN DETECTED. Cleaning and starting bot...")
-        clean_token = raw_token.strip().replace('}', '')
+        # Success path
+        print("✅ TELEGRAM_TOKEN found. Connection established.")
+        token = raw_token.strip()
         
-        app = ApplicationBuilder().token(clean_token).build()
+        app = ApplicationBuilder().token(token).build()
+        
+        # Watchman Task
         if app.job_queue:
             app.job_queue.run_repeating(check_vessel_risk, interval=60, first=10)
         
+        # Message Handler
         app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-        print("✅ Bot is online and listening.")
+        
+        print("🚀 BOT IS LIVE. Waiting for messages...")
         app.run_polling(drop_pending_updates=True)
