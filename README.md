@@ -2,8 +2,8 @@
 
 SmartPort AI is an end-to-end data engineering and machine learning solution designed to predict and manage vessel delays in busy port environments. By combining a **Gradient Boosting (XGBoost)** model with a cloud-based audit system and an AI-driven real-time notification layer.
 
-![SmartPort AI Architecture](smartport-assistant-2.png)
-![SmartPort AI Architecture](smartport-assistant-6.png)
+!(images/smartport-assistant-2.png)
+!(images/smartport-assistant-6.png)
 
 ## 🎯 Project Focus & Business Logic
 The core objective is to identify vessels that will exceed the **120-minute (2-hour) delay threshold**, which is the critical "berthing window" in port logistics.
@@ -14,7 +14,7 @@ The core objective is to identify vessels that will exceed the **120-minute (2-h
 
 ## 🏗️ Technical Architecture
 
-![SmartPort AI Architecture](architecture_diagram.png)
+![SmartPort AI Architecture](images/architecture_diagram.png)
 
 The system is built as a unified ecosystem where data flows through three distinct layers:
 
