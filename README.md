@@ -73,4 +73,4 @@ The Google Sheets dashboard is organized for high-speed decision-making:
 * **Economic Impact Scaling:** Integrating cargo value to calculate the financial loss per minute of delay.
 
 ---
-Developed by Roberto Fernández - 2025. Specialized in AI Operations and Maritime Logistics.
+Developed by Roberto Fernández - 2025. Specialized in AI Operations
