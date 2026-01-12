@@ -37,9 +37,11 @@ The pipeline processes AIS datasets, extracting features and running them throug
     * **NORMAL (< 0.5):** Routine operations.
 
 ### 2. Strategic Cloud Dashboard (Google Sheets)
-The system syncs a strategic operational sample to the cloud:
-* **Strategic Focus:** Synchronizes top 'CRITICAL' and 'WARNING' cases for immediate action.
-* **Audit Integrity:** Every entry uses a unique `prediction_id` (SHA-256 hash) to ensure data lineage.
+The system implements a robust audit and visualization layer by syncing high-priority predictions to the cloud.
+
+* **Custom Sync Engine (`01_Scripts/ai_notifier.py`):** A dedicated service that bridges local ML inference with the Google Cloud ecosystem using the Google Sheets API.
+* **Audit Integrity:** Every entry is assigned a unique `prediction_id` generated via a **SHA-256 hash**, ensuring strict data lineage and preventing duplicate entries in the audit trail.
+* **Operational dashboard:** Provides a live "Single Source of Truth" for port authorities to audit the AI's performance.
 
 ### 3. AI-Powered Telegram Interface (`main.py`)
 Deployed 24/7 on Railway, the bot acts as the central hub for the port operator:
