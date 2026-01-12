@@ -1,4 +1,4 @@
-# 🚢 SmartPort AI: Real-Time Maritime Delay Prediction & Management
+# 🚢 SmartPort AI: Real-Time Risk Monitoring & Maritime Delay Prediction
 
 SmartPort AI is an end-to-end data engineering and machine learning solution designed to predict and manage vessel delays in busy port environments. It combines a **Gradient Boosting (XGBoost)** model with a cloud-based audit system and an **AI-driven Assistant** that provides real-time notifications and natural language data analysis via Telegram.
 
