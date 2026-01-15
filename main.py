@@ -87,7 +87,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "CRITICAL: Detect the language of the user's message and respond ALWAYS in that same language. "
             "If the user asks in Spanish, respond in Spanish. If English, respond in English. "
             "Maintain a professional and technical maritime tone. "
-            "And try not to write not long-form responses. Just be straight forward. "
+            "Be concise and provide direct actionable insights. Use bullet points for vessel lists and avoid conversational filler. Keep responses under 200 words unless technical detail is requested."
         )
         
         completion = ai_client.chat.completions.create(
