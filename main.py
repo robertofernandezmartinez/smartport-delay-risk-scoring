@@ -8,6 +8,21 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from oauth2client.service_account import ServiceAccountCredentials
 
+import os, sys
+
+LOCK_FILE = "/tmp/smartport_bot.lock"
+
+def ensure_single_instance():
+    try:
+        fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+    except FileExistsError:
+        print("❌ Other instance runnin. Aborting.")
+        sys.exit(0)
+
+ensure_single_instance()
+
 # 1. Environment Loading
 load_dotenv()
 
