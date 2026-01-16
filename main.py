@@ -2,6 +2,8 @@ import os
 import json
 import gspread
 import asyncio
+import hashlib
+import uuid
 from openai import OpenAI
 from dotenv import load_dotenv
 from telegram import Update
@@ -10,6 +12,11 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 # 1. Environment Loading
 load_dotenv()
+
+# UNIQUE IDENTIFIER: Helps us catch the "zombie" instance
+INSTANCE_ID = uuid.uuid4().hex[:6]
+print(f"🚢 SmartPort AI Deployment - ONLINE")
+print(f"🆔 Current Instance ID: {INSTANCE_ID}")
 
 # Global state to prevent duplicate processing
 processed_updates = set()
@@ -59,7 +66,11 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
         
         if new_critical_alerts:
             num = len(new_critical_alerts)
-            msg = f"🚨 *CRITICAL ALERT*: {num} vessels with high risk detected!"
+            msg = (
+                f"🚨 *CRITICAL RISK ALERT* [Instance: {INSTANCE_ID}]\n\n"
+                f"SmartPort AI detected *{num} new vessels* with critical risk.\n"
+                f"Check the Dashboard for details."
+            )
             await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
         
         sent_alerts = sent_alerts.intersection(current_high_risks)
@@ -70,8 +81,8 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global processed_updates
     
-    # FIX: Prevent duplicate processing of the same message ID
-    if update.message.message_id in processed_updates:
+    # 1. DEDUPLICATION: Skip if message_id was already handled by THIS instance
+    if not update.message or update.message.message_id in processed_updates:
         return
     
     processed_updates.add(update.message.message_id)
@@ -82,9 +93,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = get_data()
         
         system_instruction = (
-            "You are a Port Operations Analyst. Examine the dataset and provide insights. "
-            "Detect the user's language and respond in the same language. "
-            "Be direct and concise. Use bullet points for lists. No conversational filler."
+            "You are a Port Operations Analyst. Analyze the dataset and provide insights. "
+            "Respond in the same language as the user. "
+            "Be direct, concise, and professional. Use bullet points for vessel lists. "
+            "Avoid long-form responses and conversational filler."
         )
         
         completion = ai_client.chat.completions.create(
@@ -94,27 +106,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": f"Dataset: {data}\nQuery: {update.message.text}"}
             ]
         )
-        await update.message.reply_text(completion.choices[0].message.content, parse_mode='Markdown')
+        
+        # 2. IDENTIFIED RESPONSE: Prepend the Instance ID to identify the source
+        response_text = f"**[System ID: {INSTANCE_ID}]**\n\n{completion.choices[0].message.content}"
+        
+        await update.message.reply_text(response_text, parse_mode='Markdown')
+
     except Exception as e:
         print(f"Chat Response Error: {e}")
     finally:
-        # Keep the memory of processed IDs small
+        # Keep the memory small
         if len(processed_updates) > 100:
             processed_updates.clear()
 
 if __name__ == '__main__':
-    print("🚢 SmartPort AI Deployment - Online")
     token = os.getenv("TELEGRAM_TOKEN")
     
     if token:
+        # Build app with session drop
         app = ApplicationBuilder().token(token.strip()).build()
         
-        # Force session reset to prevent Conflicts
+        # CLEANUP: Force Telegram to forget old sessions
         loop = asyncio.get_event_loop()
         loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
         
+        # Monitoring Job
         if app.job_queue:
             app.job_queue.run_repeating(check_vessel_risk, interval=60, first=10)
         
+        # Message Handler
         app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+        
+        # Run
         app.run_polling(drop_pending_updates=True)
