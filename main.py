@@ -2,6 +2,7 @@ import os
 import json
 import gspread
 import asyncio
+import hashlib
 from openai import OpenAI
 from dotenv import load_dotenv
 from telegram import Update
@@ -45,14 +46,11 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
         new_critical_alerts = []
 
         for vessel in data:
-            # Match the column names from your Notifier script
             v_id = str(vessel.get('vessel_id', '')).strip()
             risk_level = str(vessel.get('risk_level', '')).strip()
             
             if not v_id: continue
             
-            # Use the categorical 'risk_level' for the alert trigger
-            # This is more reliable than checking the float score again
             if risk_level == 'CRITICAL':
                 current_high_risks.add(v_id)
                 if v_id not in sent_alerts:
@@ -61,17 +59,14 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
         
         if new_critical_alerts:
             num = len(new_critical_alerts)
-            # Professional message for the Port Authority
             msg = (
                 f"🚨 *CRITICAL RISK ALERT*\n\n"
-                f"The SmartPort AI has detected *{num} new vessels* with a high probability of delay.\n"
-                f"Check the Operational Logs Dashboard for immediate action."
+                f"SmartPort AI detected *{num} new vessels* with critical delay probability.\n"
+                f"Check the Dashboard for immediate action."
             )
             await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
         
-        # Reset memory: only keep alerts for vessels that are STILL critical
         sent_alerts = sent_alerts.intersection(current_high_risks)
-        
     except Exception as e:
         print(f"Monitoring Loop Error: {e}")
 
@@ -85,9 +80,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         system_instruction = (
             "You are a Port Operations Analyst. Examine the dataset and provide insights. "
             "CRITICAL: Detect the language of the user's message and respond ALWAYS in that same language. "
-            "If the user asks in Spanish, respond in Spanish. If English, respond in English. "
-            "Maintain a professional and technical maritime tone. "
-            "Be concise and provide direct actionable insights. Use bullet points for vessel lists and avoid conversational filler. Keep responses under 200 words unless technical detail is requested."
+            "Be direct, concise, and professional. Use bullet points for lists. "
+            "Avoid long-form responses and conversational filler."
         )
         
         completion = ai_client.chat.completions.create(
@@ -100,24 +94,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(completion.choices[0].message.content, parse_mode='Markdown')
     except Exception as e:
         print(f"Chat Response Error: {e}")
-        await update.message.reply_text("I am currently unable to process your request.")
 
 if __name__ == '__main__':
     print("🚢 SmartPort AI Deployment - Online")
     token = os.getenv("TELEGRAM_TOKEN")
     
     if token:
-        # 1. Build the application
         app = ApplicationBuilder().token(token.strip()).build()
         
-        # 2. Add handlers
-        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+        # --- FIX: CLEAR PREVIOUS SESSIONS ---
+        # This prevents the double-output issue by resetting Telegram's connection state
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
         
-        # 3. Job Queue for alerts
         if app.job_queue:
             app.job_queue.run_repeating(check_vessel_risk, interval=60, first=10)
         
-        # 4. START WITH EXTRA CLEANUP
-        # 'drop_pending_updates=True' olvida mensajes antiguos
-        # 'close_loop=True' asegura que al cerrar no queden hilos sueltos
-        app.run_polling(drop_pending_updates=True, close_loop=True)
+        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+        app.run_polling(drop_pending_updates=True)
