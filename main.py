@@ -2,7 +2,6 @@ import os
 import json
 import gspread
 import asyncio
-import hashlib
 from openai import OpenAI
 from dotenv import load_dotenv
 from telegram import Update
@@ -12,7 +11,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 # 1. Environment Loading
 load_dotenv()
 
-# Global state for alerts to avoid duplicate notifications
+# Global state to prevent duplicate processing
+processed_updates = set()
 sent_alerts = set()
 
 def get_data():
@@ -59,11 +59,7 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
         
         if new_critical_alerts:
             num = len(new_critical_alerts)
-            msg = (
-                f"🚨 *CRITICAL RISK ALERT*\n\n"
-                f"SmartPort AI detected *{num} new vessels* with critical delay probability.\n"
-                f"Check the Dashboard for immediate action."
-            )
+            msg = f"🚨 *CRITICAL ALERT*: {num} vessels with high risk detected!"
             await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
         
         sent_alerts = sent_alerts.intersection(current_high_risks)
@@ -72,6 +68,14 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
 
 # --- ASSISTANT (The Analyst) ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global processed_updates
+    
+    # FIX: Prevent duplicate processing of the same message ID
+    if update.message.message_id in processed_updates:
+        return
+    
+    processed_updates.add(update.message.message_id)
+
     try:
         api_key = os.getenv("OPENAI_API_KEY")
         ai_client = OpenAI(api_key=api_key)
@@ -79,9 +83,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         system_instruction = (
             "You are a Port Operations Analyst. Examine the dataset and provide insights. "
-            "CRITICAL: Detect the language of the user's message and respond ALWAYS in that same language. "
-            "Be direct, concise, and professional. Use bullet points for lists. "
-            "Avoid long-form responses and conversational filler."
+            "Detect the user's language and respond in the same language. "
+            "Be direct and concise. Use bullet points for lists. No conversational filler."
         )
         
         completion = ai_client.chat.completions.create(
@@ -94,6 +97,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(completion.choices[0].message.content, parse_mode='Markdown')
     except Exception as e:
         print(f"Chat Response Error: {e}")
+    finally:
+        # Keep the memory of processed IDs small
+        if len(processed_updates) > 100:
+            processed_updates.clear()
 
 if __name__ == '__main__':
     print("🚢 SmartPort AI Deployment - Online")
@@ -102,8 +109,7 @@ if __name__ == '__main__':
     if token:
         app = ApplicationBuilder().token(token.strip()).build()
         
-        # --- FIX: CLEAR PREVIOUS SESSIONS ---
-        # This prevents the double-output issue by resetting Telegram's connection state
+        # Force session reset to prevent Conflicts
         loop = asyncio.get_event_loop()
         loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
         
