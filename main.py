@@ -8,25 +8,10 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from oauth2client.service_account import ServiceAccountCredentials
 
-import os, sys
-
-LOCK_FILE = "/tmp/smartport_bot.lock"
-
-def ensure_single_instance():
-    try:
-        fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode())
-        os.close(fd)
-    except FileExistsError:
-        print("❌ Other instance runnin. Aborting.")
-        sys.exit(0)
-
-ensure_single_instance()
-
 # 1. Environment Loading
 load_dotenv()
 
-# Global state to prevent duplicates
+# Global state to ensure single responses
 processed_updates = set()
 sent_alerts = set()
 
@@ -46,9 +31,10 @@ def get_data():
         gc = gspread.authorize(creds)
         return gc.open_by_key(spreadsheet_id).sheet1.get_all_records()
     except Exception as e:
-        print(f"❌ Database Error: {e}")
+        print(f"❌ Database Connectivity Error: {e}")
         return []
 
+# --- RISK MONITORING SYSTEM ---
 async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
     global sent_alerts
     try:
@@ -70,17 +56,18 @@ async def check_vessel_risk(context: ContextTypes.DEFAULT_TYPE):
                     sent_alerts.add(v_id)
         
         if new_alerts:
-            msg = f"🚨 *CRITICAL ALERT*: SmartPort AI detected {len(new_alerts)} high-risk vessels."
+            msg = f"🚨 *CRITICAL RISK*: SmartPort AI detected {len(new_alerts)} vessels requiring immediate attention."
             await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode='Markdown')
         
         sent_alerts = sent_alerts.intersection(current_high_risks)
     except Exception as e:
         print(f"Monitoring Error: {e}")
 
+# --- AI LOGISTICS ANALYST ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global processed_updates
     
-    # DEDUPLICATION LOGIC
+    # DEDUPLICATION: Ensures only one response per message ID
     if not update.message or update.message.message_id in processed_updates:
         return
     
@@ -93,7 +80,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         system_instruction = (
             "You are a Port Operations Analyst. Analyze the dataset and provide insights. "
             "Respond in the same language as the user. "
-            "Be direct, professional, and concise. Use bullet points for data."
+            "Be direct, professional, and concise. Use bullet points for vessel lists."
         )
         
         completion = ai_client.chat.completions.create(
@@ -105,13 +92,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await update.message.reply_text(completion.choices[0].message.content, parse_mode='Markdown')
     except Exception as e:
-        print(f"Analyst Error: {e}")
+        print(f"AI Assistant Error: {e}")
     finally:
+        # Keep internal memory clean
         if len(processed_updates) > 50:
             processed_updates.clear()
 
 if __name__ == '__main__':
-    print("🚢 SmartPort AI Deployment - Online")
+    print("🚢 SmartPort AI Deployment - Online (New Token Active)")
     token = os.getenv("TELEGRAM_TOKEN")
     
     if token:
