@@ -107,9 +107,17 @@ if __name__ == '__main__':
     token = os.getenv("TELEGRAM_TOKEN")
     
     if token:
+        # 1. Build the application
         app = ApplicationBuilder().token(token.strip()).build()
+        
+        # 2. Add handlers
+        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+        
+        # 3. Job Queue for alerts
         if app.job_queue:
             app.job_queue.run_repeating(check_vessel_risk, interval=60, first=10)
         
-        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-        app.run_polling(drop_pending_updates=True)
+        # 4. START WITH EXTRA CLEANUP
+        # 'drop_pending_updates=True' olvida mensajes antiguos
+        # 'close_loop=True' asegura que al cerrar no queden hilos sueltos
+        app.run_polling(drop_pending_updates=True, close_loop=True)
