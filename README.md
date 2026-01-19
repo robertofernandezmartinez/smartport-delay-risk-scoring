@@ -5,6 +5,8 @@ SmartPort AI is an end-to-end **maritime risk intelligence system** designed to 
 
 It transforms raw AIS (Automatic Identification System) movement data into **actionable operational alerts**, identifying vessels at risk of exceeding the **critical 120-minute berthing delay window**, delivering insights via a cloud-based dashboard and an AI-powered Telegram assistant.
 
+Raw data: https://www.kaggle.com/datasets/bobaaayoung/container-ship-data-collection?utm_source=chatgpt.com&select=tracking_db.csv
+
 ![](images/smartport-image.png)
 
 ---
