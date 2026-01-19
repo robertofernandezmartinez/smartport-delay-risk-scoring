@@ -1,144 +1,95 @@
-# 🚢 SmartPort AI  
-**Real-Time Risk Monitoring & Maritime Delay Prediction**
+# 🚢 SmartPort AI: Predictive Logistics & Supply Chain Intelligence
+**Real-Time Maritime Risk Monitoring & Inventory Impact Analysis**
 
-SmartPort AI is an end-to-end **maritime risk intelligence system** designed to predict, monitor, and act on vessel delays in congested port environments.
+SmartPort AI is a comprehensive **maritime intelligence ecosystem** designed to predict vessel delays and analyze their direct impact on global supply chains. 
 
-It transforms raw AIS movement data into **actionable operational alerts**, identifying vessels at risk of exceeding the **critical 120-minute berthing delay window**, and delivering those insights in real time via a cloud-based dashboard and an AI-powered Telegram assistant.
-
-The system runs continuously, combining **machine learning**, **cloud auditability**, and **natural-language decision support**.
+By merging **Machine Learning (XGBoost)**, **Real-Time Data Orchestration**, and **Generative AI (GPT-4o)**, this system transforms raw AIS movement data into actionable business decisions.
 
 ![](images/smartport-image.png)
 
 ---
 
-## 🎯 Project Purpose & Business Logic
+## 🎯 Business Logic & Problem Statement
 
-Ports operate under tight berthing windows. Delays beyond **2 hours (120 minutes)** have cascading operational and economic impact.
+In maritime logistics, a delay of more than **120 minutes** (the critical berthing window) creates a ripple effect of economic loss. SmartPort AI solves this by answering:
 
-**SmartPort AI exists to answer one question clearly and early:**
-
-> *Which vessels are likely to exceed the 120-minute delay threshold, and what should we do about it?*
-
-### Core Objectives
-- **Predict** vessel delays exceeding 120 minutes  
-- **Categorize risk automatically** (Critical / Warning / Normal)  
-- **Notify operators in real time**  
-- **Provide clear, explainable actions**, not just scores  
-
-This makes the system **operational**, not just analytical.
+1.  **Prediction:** Which vessels will exceed the 120-minute delay threshold?
+2.  **Impact:** How does this delay affect our current **warehouse stock levels**?
+3.  **Action:** What priority measures should operations teams take right now?
 
 ---
 
-## 🧠 High-Level System Overview
-
-SmartPort AI is built as a **three-layer ecosystem**:
-
-1. **ML Prediction Engine** – runs delay risk inference  
-2. **Cloud Audit & Dashboard** – acts as the operational source of truth  
-3. **Command & Control Interface** – Telegram bot with AI reasoning  
-
-Data flows cleanly from prediction → audit → action.
-
----
-
-## 🏗️ Architecture Overview
+## 🏗️ System Architecture: The Three-Layer Ecosystem
 
 ![SmartPort AI Architecture](images/architecture_diagram.png)
 
-### 1. ML Engine (Local or Scheduled Execution)
+SmartPort AI is built as a modular pipeline designed for scalability:
 
-- Processes AIS datasets  
-- Engineers movement-based features such as:
-  - speed variation  
-  - movement stability  
-  - heading changes  
-- Runs an **XGBoost model** trained for delay risk classification  
+### 1. The ML Engine (Predictive Layer)
+* **Model:** XGBoost Classifier trained on AIS movement patterns.
+* **Feature Engineering:** Analyzes speed stability, heading variance, and historical congestion.
+* **Output:** Generates a `risk_score` (0-1) and categorizes vessels into **CRITICAL**, **WARNING**, or **NORMAL**.
 
-**Output per vessel:**
-- `risk_score` (0–1 probability)  
-- `risk_level` (CRITICAL / WARNING / NORMAL)  
-- Recommended operational action  
+### 2. The Cloud Audit Layer (Source of Truth)
+* **Platform:** Google Sheets API.
+* **Function:** Acts as a lightweight, auditable data warehouse and dashboard.
+* **Traceability:** Every prediction is hashed using **SHA-256** (`prediction_id`) to ensure data integrity and prevent duplicates.
 
-This layer is deterministic, fast, and auditable.
-
----
-
-### 2. Cloud Audit & Operational Dashboard (Google Sheets)
-
-Google Sheets is used intentionally as a **lightweight cloud data warehouse** and audit layer.
-
-**Why Google Sheets?**
-- Immediate visibility for operations teams  
-- Built-in sharing and access control  
-- Acts as a **Single Source of Truth**  
-
-#### Key Characteristics
-- Every prediction is logged with a **unique `prediction_id`**  
-- IDs are generated using **SHA-256 hashing** to prevent duplicates  
-- Ensures full traceability of:
-  - when the model ran  
-  - what it predicted  
-  - what action was recommended  
-
-This makes the system **auditable and explainable**, not a black box.
+### 3. The Command & Control Center (Interaction Layer)
+* **Technology:** Python-Telegram-Bot + OpenAI API.
+* **Watchman:** Proactively scans the dashboard every 60 seconds for new critical risks.
+* **Analyst:** A natural-language interface allowing operators to query the state of the port and receive strategic advice.
 
 ---
 
-### 3. Command & Control: AI-Powered Telegram Bot
+## 🔗 The "Bridge": Supply Chain Integration
+**Where Logistics meets Inventory.**
 
-Deployed 24/7 on **Railway**, the Telegram bot is the operator’s interface.
+This project features a unique integration with an independent **Stock-Out Prediction Engine**. By cross-referencing maritime delays with warehouse demand, the system calculates **Compound Risk**.
 
-It serves two roles:
+* **Logic:** `(Estimated Arrival Time) > (Predicted Stock-Out Date) = Critical Supply Chain Breach`.
+* **Value:** Instead of just reporting a late ship, the system identifies **which specific products** will go out of stock due to that delay.
 
-#### 🔔 Proactive Watchman
-- Scans the dashboard every 60 seconds  
-- Detects new **CRITICAL** risk entries  
-- Sends **consolidated alerts** (anti-spam by design)  
 
-#### 🧠 Intelligent Analyst
-- Powered by OpenAI  
-- Operators can ask:
-  - “Which vessels are at risk right now?”  
-  - “What actions should I prioritize?”  
-- Supports **English and Spanish**  
-- Translates raw data into **plain operational language**  
-
-This closes the loop between prediction and decision.
 
 ---
 
-## 🚦 Risk Classification Logic
+## 🚦 Risk & Priority Matrix
 
-Each vessel prediction follows a clear decision map:
-
-| Risk Level | Score Range | Operational Meaning | Suggested Action |
-|-----------|-------------|---------------------|------------------|
-| **CRITICAL** | > 0.80 | High likelihood of >120 min delay | Immediate intervention (reassign berth, escalate) |
-| **WARNING** | 0.50 – 0.80 | Elevated risk | Monitor ETA / AIS closely |
-| **NORMAL** | < 0.50 | Low risk | Routine operations |
-
-This ensures **consistency and trust** in how alerts are generated.
+| Risk Level | Threshold | Operational Meaning | Supply Chain Impact |
+| :--- | :--- | :--- | :--- |
+| **CRITICAL** | > 0.80 | High likelihood of >120m delay | Immediate Stock-Out risk for assigned cargo. |
+| **WARNING** | 0.50 - 0.80 | Elevated risk; AIS monitoring req. | Potential safety stock depletion. |
+| **NORMAL** | < 0.50 | On-schedule operations | Routine inventory replenishment. |
 
 ---
 
-## 📊 Dashboard Schema
+## 🛠️ Tech Stack
 
-The Google Sheets dashboard is structured for fast scanning and audits:
+* **Languages:** Python 3.10+
+* **AI/ML:** XGBoost, Scikit-learn, OpenAI GPT-4o-mini.
+* **Data/Cloud:** Google Sheets API (gspread), Pandas.
+* **Deployment:** Telegram Bot API, Railway / Local Environment.
+* **Security:** SHA-256 Hashing, Environment Variables (`.env`).
+
+---
+
+## 📊 Dashboard Structure
+
+The Google Sheets dashboard is structured for fast scanning and operational audits:
 
 | Column | Description |
-|-------|------------|
-| `prediction_id` | Unique SHA-256 hash for traceability |
-| `timestamp` | Exact execution time of prediction |
-| `vessel_id` | Vessel identifier from AIS data |
-| `risk_score` | Model confidence (0–1) |
-| `risk_level` | CRITICAL / WARNING / NORMAL |
-| `action` | Recommended operational response |
+| :--- | :--- |
+| `prediction_id` | Unique SHA-256 hash for audit and traceability. |
+| `timestamp` | Exact time the model executed the inference. |
+| `vessel_id` | Unique identifier for the vessel. |
+| `risk_score` | Probability of delay >120 minutes. |
+| `risk_level` | Operational category (CRITICAL / WARNING / NORMAL). |
+| `action` | AI-generated operational recommendation. |
 
 ---
 
-## 🛠️ Setup & Deployment
-
-### ML Inference
-Run locally or on schedule:
-```bash
-python execution.py
+## 🚀 Future Roadmap
+- [ ] **Dynamic Re-routing:** Suggesting alternative ports based on congestion.
+- [ ] **Financial Impact:** Estimating the USD cost of each hour of delay.
+- [ ] **Computer Vision:** Integrating satellite imagery to verify AIS positions.
