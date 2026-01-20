@@ -29,7 +29,7 @@ def get_data():
             creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
         
         gc = gspread.authorize(creds)
-        return gc.open_by_key(spreadsheet_id).sheet1.get_all_records()
+        return gc.open_by_key(spreadsheet_id).worksheet("risk_alerts").get_all_records()
     except Exception as e:
         print(f"❌ Database Connectivity Error: {e}")
         return []
