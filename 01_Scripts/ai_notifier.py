@@ -19,7 +19,7 @@ def sync_balanced_dashboard():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
-        client = gspread.authorize(creds).open_by_key(SPREADSHEET_ID).sheet1
+        client = gspread.authorize(creds).open_by_key(SPREADSHEET_ID).worksheet("risk_alerts")
     except Exception as e:
         print(f"✘ Connection Error: {e}")
         return
